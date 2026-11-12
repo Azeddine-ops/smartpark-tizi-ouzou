@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import useSWR from "swr";
 import { motion } from "framer-motion";
 import {
@@ -190,14 +189,11 @@ export default function LandingPage() {
             className="relative"
           >
             <div className="animate-float-y relative overflow-hidden rounded-[28px] border border-white/10 shadow-[0_40px_120px_rgba(2,8,23,0.8)]">
-              <Image
-                src="https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?w=1200&q=80"
-                alt="Tizi-Ouzou la nuit — parkings intelligents"
-                width={1100}
-                height={880}
-                className="h-auto w-full object-cover"
-                priority
-              />
+             <img
+  src="https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=1200&q=80"
+  alt="Smart Parking City"
+  className="h-auto w-full object-cover rounded-[28px]"
+/>
               <div className="absolute inset-0 bg-gradient-to-t from-[#05080f] via-transparent to-transparent" />
               {/* pastilles flottantes */}
               <div className="glass-soft absolute left-4 top-4 rounded-2xl px-4 py-3 text-[11px]">
