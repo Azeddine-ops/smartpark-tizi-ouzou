@@ -7,6 +7,7 @@
  * - historique de réservations/paiements (CIB, Edahabia, espèces) ;
  * - 24 snapshots d'occupation pour l'entrepôt de données.
  */
+import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   auditEvents,
@@ -19,6 +20,117 @@ import {
   users,
 } from "@/db/schema";
 import { quoteParking } from "@/lib/pricing";
+
+/**
+ * Bootstrap DDL — auto-création des tables au premier démarrage.
+ * Rend le déploiement 100 % autonome (ex. Vercel + base managée) :
+ * aucun `drizzle-kit push` requis, l'application crée son schéma puis
+ * sème les données de démonstration. Idempotent (IF NOT EXISTS).
+ */
+const BOOTSTRAP_DDL = `
+CREATE TABLE IF NOT EXISTS users (
+  id serial PRIMARY KEY,
+  name text NOT NULL,
+  plate text NOT NULL UNIQUE,
+  phone text,
+  trust_score integer NOT NULL DEFAULT 80,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS parking_lots (
+  id serial PRIMARY KEY,
+  slug text NOT NULL UNIQUE,
+  name text NOT NULL,
+  address text NOT NULL,
+  node_key text NOT NULL,
+  lat real NOT NULL,
+  lng real NOT NULL,
+  hourly_rate real NOT NULL,
+  open_hour integer NOT NULL DEFAULT 6,
+  close_hour integer NOT NULL DEFAULT 23,
+  features jsonb NOT NULL DEFAULT '[]'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS parking_spots (
+  id serial PRIMARY KEY,
+  lot_id integer NOT NULL REFERENCES parking_lots(id) ON DELETE CASCADE,
+  code text NOT NULL,
+  zone text NOT NULL,
+  status text NOT NULL DEFAULT 'free',
+  sensor_ok boolean NOT NULL DEFAULT true,
+  sensor_fault_reason text,
+  last_heartbeat timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS reservations (
+  id serial PRIMARY KEY,
+  code text NOT NULL UNIQUE,
+  user_id integer NOT NULL REFERENCES users(id),
+  spot_id integer NOT NULL REFERENCES parking_spots(id),
+  lot_id integer NOT NULL REFERENCES parking_lots(id),
+  status text NOT NULL DEFAULT 'pending',
+  duration_min integer NOT NULL,
+  amount_estimated real NOT NULL,
+  amount_final real,
+  payment_method text,
+  rush_applied boolean NOT NULL DEFAULT false,
+  expires_at timestamptz NOT NULL,
+  checked_in_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS payments (
+  id serial PRIMARY KEY,
+  reservation_id integer NOT NULL REFERENCES reservations(id),
+  method text NOT NULL,
+  amount real NOT NULL,
+  status text NOT NULL,
+  reference text NOT NULL,
+  card_last4 text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS audit_events (
+  id serial PRIMARY KEY,
+  kind text NOT NULL,
+  message text NOT NULL,
+  user_id integer,
+  lot_id integer,
+  meta jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS snapshots (
+  id serial PRIMARY KEY,
+  tick integer NOT NULL,
+  free integer NOT NULL,
+  occupied integer NOT NULL,
+  reserved integer NOT NULL,
+  maintenance integer NOT NULL,
+  defective integer NOT NULL,
+  revenue real NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS sim_state (
+  id serial PRIMARY KEY,
+  tick integer NOT NULL DEFAULT 0,
+  rush_mode text NOT NULL DEFAULT 'auto',
+  last_tick_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS spots_lot_idx ON parking_spots(lot_id);
+CREATE UNIQUE INDEX IF NOT EXISTS spots_lot_code_uq ON parking_spots(lot_id, code);
+CREATE INDEX IF NOT EXISTS spots_status_idx ON parking_spots(status);
+CREATE INDEX IF NOT EXISTS res_user_idx ON reservations(user_id);
+CREATE INDEX IF NOT EXISTS res_status_idx ON reservations(status);
+CREATE INDEX IF NOT EXISTS audit_kind_idx ON audit_events(kind);
+`;
+
+async function ensureTables(): Promise<void> {
+  try {
+    await db.execute(sql.raw(BOOTSTRAP_DDL));
+  } catch (e) {
+    // si deux requêtes initialisent en parallèle, une peut perdre la course :
+    // sans gravité, IF NOT EXISTS garantit l'idempotence au prochain appel.
+    console.error("[seed] bootstrap DDL", e);
+  }
+}
 
 const LOTS = [
   {
@@ -99,11 +211,18 @@ let seeded = false;
 
 export async function ensureSeeded(): Promise<void> {
   if (seeded) return;
-  const existing = await db.select({ id: parkingLots.id }).from(parkingLots).limit(1);
-  if (existing.length > 0) {
+  try {
+    await ensureSeededInner();
     seeded = true;
-    return;
+  } catch (e) {
+    console.error("[seed] échec de l'amorçage, nouvelle tentative à la prochaine requête", e);
   }
+}
+
+async function ensureSeededInner(): Promise<void> {
+  await ensureTables();
+  const existing = await db.select({ id: parkingLots.id }).from(parkingLots).limit(1);
+  if (existing.length > 0) return;
 
   const now = Date.now();
   const lotRows = await db.insert(parkingLots).values(LOTS.map(({ counts: _c, zones: _z, ...l }) => l)).returning();
@@ -232,6 +351,4 @@ export async function ensureSeeded(): Promise<void> {
       message: "Paiement CIB accepté via passerelle SATIM — remise e-paiement appliquée.",
     },
   ]);
-
-  seeded = true;
 }
