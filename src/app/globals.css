@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Sora Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #05080f;
+  --color-panel: #0b1120;
+  --color-card: #0f172a;
+  --color-line: rgba(148, 163, 184, 0.14);
+  --color-mint: #34d399;
+  --color-aqua: #22d3ee;
+  --color-amberish: #fbbf24;
+  --color-roseish: #fb7185;
+  --animate-dash: dashmove 1.3s linear infinite;
+  --animate-dash-slow: dashmove 2.6s linear infinite;
+  --animate-ping-slow: pingring 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+  --animate-float-y: floaty 7s ease-in-out infinite;
+}
+
+@keyframes dashmove {
+  to {
+    stroke-dashoffset: -26;
+  }
+}
+@keyframes pingring {
+  0% {
+    transform: scale(0.42);
+    opacity: 0.9;
+  }
+  75%,
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+@keyframes shimmer {
+  to {
+    background-position: 200% center;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-ink);
+  color: #cbd5e1;
+  font-family: var(--font-body);
+  background-image:
+    radial-gradient(1100px 500px at 85% -10%, rgba(34, 211, 238, 0.07), transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, rgba(52, 211, 153, 0.06), transparent 60%);
+  min-height: 100vh;
+}
+
+::selection {
+  background: rgba(52, 211, 153, 0.35);
+  color: #ecfeff;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1e293b transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 8px;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.glass {
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.86), rgba(8, 13, 26, 0.92));
+  border: 1px solid var(--color-line);
+  backdrop-filter: blur(14px);
+}
+
+.glass-soft {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid var(--color-line);
+  backdrop-filter: blur(10px);
+}
+
+.text-gradient {
+  background: linear-gradient(92deg, #6ee7b7 0%, #22d3ee 55%, #818cf8 110%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.shimmer-text {
+  background: linear-gradient(92deg, #a7f3d0, #67e8f9, #a7f3d0);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 5s linear infinite;
+}
+
+.road-dash {
+  stroke-dasharray: 7 19;
+  animation: var(--animate-dash);
+}
+
+.num-tick {
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="range"] {
+  accent-color: #34d399;
+}
