@@ -190,7 +190,7 @@ export default function LandingPage() {
           >
             <div className="animate-float-y relative overflow-hidden rounded-[28px] border border-white/10 shadow-[0_40px_120px_rgba(2,8,23,0.8)]">
              <img
-  src="https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=1200&q=80"
+  src="/images/hero.jpg"
   alt="Smart Parking City"
   className="h-auto w-full object-cover rounded-[28px]"
 />
